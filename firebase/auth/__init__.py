@@ -60,25 +60,16 @@ class Auth:
 		if client_secret:
 			self.client_secret = _load_client_secret(client_secret)
 
-	def authenticate_login_with_google(self):
+	def authenticate_login_with_google(self, continue_uri):
 		""" Redirect the user to Google's OAuth 2.0 server to initiate 
 		the authentication and authorization process.
 
 		:return: Google Sign In URL
 		:rtype: str
 		"""
-		return self.create_authentication_uri('google.com')
+		return self.create_authentication_uri('google.com', continue_uri)
 
-	def authenticate_login_with_facebook(self):
-		""" Redirect the user to Facebook's OAuth 2.0 server to
-		initiate the authentication and authorization process.
-
-		:return: Facebook Sign In URL
-		:rtype: str
-		"""
-		return self.create_authentication_uri('facebook.com')
-
-	def create_authentication_uri(self, provider_id):
+	def create_authentication_uri(self, provider_id, continue_uri):
 		""" Creates an authentication URI for the given social
 		provider.
 
@@ -108,7 +99,7 @@ class Auth:
 		data = {
 			"clientId": self.client_secret['client_id'],
 			"providerId": provider_id,
-			"continueUri": self.client_secret['redirect_uris'][0],
+			"continueUri": continue_uri,
 		}
 
 		self.__nonce = "".join(random.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789") for _ in range(20))
@@ -116,11 +107,6 @@ class Auth:
 		if provider_id == 'google.com':
 			data['authFlowType'] = 'CODE_FLOW'
 			data['customParameter'] = {"access_type": 'offline', "prompt": 'select_account', "include_granted_scopes": 'true', "nonce": self.__nonce}
-
-		if provider_id == 'facebook.com':
-			self.__code_verifier, code_challenge = pkce.generate_pkce_pair()
-			data['oauthScope'] = 'openid'
-			data['customParameter'] = {"code_challenge": code_challenge, "code_challenge_method": 'S256', "nonce": sha256(self.__nonce.encode('utf')).hexdigest()}
 
 		headers = {"content-type": "application/json; charset=UTF-8"}
 		request_object = self.requests.post(request_ref, headers=headers, json=data)
